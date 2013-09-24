@@ -1,3 +1,5 @@
+#!/home/pi/.virtualenvs/yellowlight/bin/python
+
 import requests
 import wiringpi
 import time
@@ -16,7 +18,7 @@ def off():
 def get_count():
 	new_count = None
 	try:
-		r = requests.get('http://sunlightfoundation.com/api/analytics/data/keys/issued/yearly/', cookies=dict(sessionid=SESSION_ID))
+		r = requests.get('http://sunlightfoundation.com/api/analytics/data/keys/issued/yearly/?ignore_internal_keys=false', cookies=dict(sessionid=SESSION_ID))
 		new_count = json.loads(r.text)
 	except:
 		pass
@@ -29,23 +31,37 @@ def get_count():
 
 	return None
 
-def blink_once():
+def blink_once(delay=1):
 	on()
-	time.sleep(1)
+	time.sleep(delay)
 	off()
-	time.sleep(1)
+	time.sleep(delay)
+
+def setup():
+	wiringpi.wiringPiSetup()
+        wiringpi.pinMode(6, wiringpi.OUTPUT)
 
 def main():
-	wiringpi.wiringPiSetup()
-	wiringpi.pinMode(6, wiringpi.OUTPUT)
+	setup()
 
+	last_count = None
 	while last_count is None:
+		print "Attempting to retrieve starting count..."
 		last_count = get_count()
 		time.sleep(1)
+
+	print "Starting count is %d" % last_count
+
+	for i in range(1, 4):
+		for j in range(0, i):
+			blink_once(delay=0.5)
+		time.sleep(0.5)
 
 	while True:
 		new_count = get_count()
 		if new_count is not None:
+			print "retrieved current count: %d keys" % new_count
+
 			delta = new_count - last_count
 			for i in range(0, delta):
 				blink_once()
